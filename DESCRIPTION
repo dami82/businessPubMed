@@ -1,0 +1,12 @@
+Package: businessPubMed
+Type: Package
+Title: Extract and Prepare Data from PubMer Records
+Version: 1.3
+Date: 2018-05-27
+Author: Damiano Fantini
+Maintainer: Damiano Fantini <damiano.fantini@gmail.com>
+Description: PubMed is a publicly available repository of abstracts from scientific publications in the field of Medicine and Life Sciences. PubMed records also include valuable information about authors that performed and published their research. This package supports retrieving author-related data from PubMed via the easyPubMed package.  
+Depends: R(>= 3.0), easyPubMed(>= 2.5), XML
+VignetteBuilder: knitr
+Suggests: knitr, rmarkdown
+License: GPL-2

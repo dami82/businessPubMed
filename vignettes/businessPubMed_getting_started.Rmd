@@ -1,0 +1,141 @@
+---
+title: "Leverging PubMed records for business applications"
+author: "Damiano Fantini"
+date: "May 28, 2018"
+output:
+  pdf_document:
+    latex_engine: xelatex
+  html_document:
+    df_print: paged
+vignette: >
+  %\VignetteIndexEntry{Leverging PubMed records for business applications}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\usepackage[utf8]{inputenc}
+---
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(easyPubMed)
+library(businessPubMed)
+```
+
+## Installing the businessPubMed package
+
+The `businessPubMed` package can be installed from GitHub (via devtools). It requires the latest version of easyPubMed (version 2.5 available on CRAN, or version 2.7 available on GitHub). The `devtools` package is available on CRAN.
+
+
+```{r install01, include=T, eval=FALSE}
+# install the package via > devtools::install_github("dami82/businessPubMed")
+library(devtools)
+install_github("dami82/easyPubMed")
+install_github("dami82/businessPubMed")
+
+library(easyPubMed)
+library(businessPubMed)
+```
+
+## Getting started
+
+Here, we showcase how to use `businessPubMed` to retrieve email addresses from PubMed records. Specifically, we will: i) retrieve recent records about a subject of interest; ii) extract email addresses of contributing and corresponding authors from these records; iii) automatically prepare a message with a topic- and publication-specific mock offer (real names/adds are masked in the vignette) for a targeting campaign. In this example, we are querying PubMed for works published in the United States between 2012 and 2017 on the topic: "T cells".
+
+```{r run01, include=T, eval=T}
+# define a research subject
+res.subject <- "t cell"
+
+# define a PubMed Query string
+my.query <- paste('"', res.subject, '"[TI]', sep = '') 
+my.query <- paste(my.query, 'AND (USA[Affiliation] OR "United States")' , sep = '')
+my.query <- paste(my.query, 'AND ("2013"[EDAT]:"2017"[EDAT])')
+
+# Show query string
+cat(my.query)
+# define the regex filter
+data("countries")
+countries <- countries[countries != "United States of America"]
+countries.filter <- gsub("[[:punct:]]", "[[:punct:]]", toupper(countries))
+countries.filter <- gsub(" ", "[[:space:]]", countries.filter)
+countries.filter <- paste("(",countries.filter,")", sep = "", collapse = "|")
+countries.filter <- paste("(UK)|", countries.filter, sep = "")
+
+```
+```{r run02, include=T, eval=F}
+# Show filter string
+cat(countries.filter)
+```
+```{r run02real, include=T, eval=T, echo=FALSE}
+# Show filter string
+cat(paste(substr(countries.filter, 1, 85), "...", sep = ""))
+```
+
+```{r run03, include=T, eval=T}
+# Check time t_init
+t_init <- Sys.time()
+
+# extract data from PubMed
+my.data <- businessPubMed::extract_pubMed_data(pubMed_query = my.query, 
+                                               batch_size = 1000,
+                                               affi_regex_exclude = countries.filter)
+
+# Check time t_final
+t_final <- Sys.time()
+
+# How many unique documents?
+my.data$params$pubMed_id_list$Count
+# How many unique addresses?
+sum(!is.na(unique(my.data$data$address)))
+# How many unique emails?
+sum(!is.na(unique(my.data$data$email)))
+# How long did this analysis take?
+print(t_final - t_init)
+# Automated message composition - filter missing email addresses
+contact.DF <- my.data$data[!is.na(my.data$data$email),]
+
+# Automated message composition - process one record
+# You may want to wrap this in a `for (i in 1:nrow(contact.DF)) {...}` loop
+i = 1
+tmp.addressee <- contact.DF[i,]
+```
+```{r run04, include=F, eval=T, echo=F, include=F}
+tmp.addressee$firstname <- "John"
+tmp.addressee$lastname <- "Doe"
+tmp.addressee$title <- "The identification of key markers of lymphoproliferative disorders"
+tmp.addressee$journal <- "American Journal of Cancer and Immunity"
+tmp.addressee$address <- "Department of Internal Medicine, State University, Springfield, USA"
+tmp.addressee$email <- "john.doe@sprinfieldstateuniv.edu"
+```
+```{r run05, include=T, eval=T}
+# Compose the message for the targeting campaign
+mail.text <- paste("\n", tmp.addressee$address, "\n\n", "Dear Dr. ", 
+                   tmp.addressee$lastname, " ", tmp.addressee$firstname, 
+                   ", \n\n    I really appreciated reading your ", 
+                   tmp.addressee$year ," manuscript that was published\non ", 
+                   tmp.addressee$journal, ". I believe that your work on\n", 
+                   gsub("[[:punct:]]$", "", tolower(tmp.addressee$title)), 
+                   "\nmay really benefit from the products included in ", 
+                   "our offer. \nFor example, we sell a product specifically", 
+                   " designed for research on ", res.subject, "\nand I am ", 
+                   "happy to include a special offer that you may find ",
+                   "interesting. \n[...] \nFeel free to contact me at the", 
+                   " following address XXXXX... \n \nRegards. \n \n", 
+                   "Frank Doe \nCompany XYZ", sep = "")
+
+# Here you should add code for preparing and sending an email.
+# However, this goes beyond the scope of this vignette.
+# Here, we display the text of our mock email
+cat(mail.text)
+```
+
+The whole analysis can be performed reasonably fast (about 4 mins per 1000 records, using a standard laptop). Moreover, parallelization may be exploited to further speed up the processing time. 
+Other than for targeting campaigns, `businesPubMed` can be used for a wide panel of similar application. I hope you found this vignette useful.
+Thanks for using `easyPubMed` and `businessPubMed`.
+
+Damiano Fantini (Copyright 2018)
+
+## Session Info
+
+```{r run06}
+print(sessionInfo())
+```
+
